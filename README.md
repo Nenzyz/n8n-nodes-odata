@@ -1,4 +1,4 @@
-# n8n-nodes-_node-name_
+# n8n-nodes-odata
 
 This is an n8n community node. It lets you use _OData_ in your n8n workflows.
 
@@ -35,7 +35,6 @@ If you are new to n8n, [Try it out](https://docs.n8n.io/try-it-out/).
 ## Resources
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
-* _Link to app/service documentation._
 
 
 
