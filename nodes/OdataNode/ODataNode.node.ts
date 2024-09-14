@@ -172,7 +172,7 @@ export class ODataNode implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		let item: INodeExecutionData;
+		//let item: INodeExecutionData;
 		let url: string;
 		let method: string;
 		let resource: string;
@@ -183,7 +183,9 @@ export class ODataNode implements INodeType {
 		let top: string;
 		let skip: string;
 		let data: { [key: string]: any };
-		let response: IDataObject = {};
+		let response: IDataObject[] = [];
+
+		let newitems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -217,7 +219,7 @@ export class ODataNode implements INodeType {
 						query["$skip"] = skip
 				}
 
-				console.log(method, resource, 'with query:', query, 'and data:', data)
+				//console.log(method, resource, 'with query:', query, 'and data:', data)
 				switch(method){
 					case 'GET':
 						response = await o(url)
@@ -241,8 +243,15 @@ export class ODataNode implements INodeType {
 						break
 				}
 
-				item = items[itemIndex];
-				item.json = response;
+
+				for (let obj of response) {
+					newitems.push({
+						json: obj,
+						pairedItem: { item: itemIndex, input: undefined }
+					});
+				  }
+
+
 
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -261,8 +270,10 @@ export class ODataNode implements INodeType {
 				}
 		}
 	}
-		return this.prepareOutputData(items);
 
+
+
+		return this.prepareOutputData(newitems);
 
 	}
 }
