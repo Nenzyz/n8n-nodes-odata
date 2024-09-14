@@ -14,7 +14,7 @@ _OData (Open Data Protocol) is an open protocol that allows the creation and con
 
 ## Installation
 
-From settings/community-nodes, add @arose26/n8n-nodes-odata
+From settings/community-nodes, add n8n-nodes-odata
 
 Alternatively, follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
 
