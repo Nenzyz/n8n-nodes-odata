@@ -22,6 +22,12 @@ export class ODataNode implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'oDataCredentialsApi',
+				required: false,
+			},
+		],
 		properties: [
 			{
 				displayName: 'URL',
@@ -31,6 +37,56 @@ export class ODataNode implements INodeType {
 				placeholder: 'https://services.odata.org/TripPinRESTierService',
 				description: 'The OData service URL',
 			},
+
+			/*
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				noDataExpression: true,
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Generic Credential Type',
+						value: 'genericCredentialType',
+						description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
+					},
+				],
+				default: 'none',
+			},
+			{
+				displayName: 'Credential Type',
+				name: 'nodeCredentialType',
+				type: 'credentialsSelect',
+				noDataExpression: true,
+				required: true,
+				default: '',
+				credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
+				displayOptions: {
+					show: {
+						authentication: ['predefinedCredentialType'],
+					},
+				},
+			},
+			{
+				displayName: 'Generic Auth Type',
+				name: 'genericAuthType',
+				type: 'credentialsSelect',
+				required: true,
+				default: '',
+				credentialTypes: ['has:genericAuth'],
+				displayOptions: {
+					show: {
+						authentication: ['genericCredentialType'],
+					},
+				},
+			},*/
+
+
+
 			{
 				displayName: "Method",
 				name: "method",
@@ -187,6 +243,9 @@ export class ODataNode implements INodeType {
 
 		let newitems: INodeExecutionData[] = [];
 
+		//let credentials = 'tealpegeen@starmail.net:+F1lBXKJdD1ZiLYp6wOfq0i1xIcFMRq6AYLNRWqMFdkb+Pgr'
+		//const base64Credentials = Buffer.from(credentials, 'utf8').toString('base64')
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				// OData service URL		
@@ -203,7 +262,37 @@ export class ODataNode implements INodeType {
 				skip = this.getNodeParameter('skip', itemIndex, '') as string;
 				let data_str = this.getNodeParameter('data', itemIndex, '{}') as string;
 				data = JSON.parse(data_str || '{}')
-				
+
+				//this.getNodeParameter('header', itemIndex, '') as string;
+				//let auth = this.getNodeParameter('authentication', itemIndex, '') as string;
+				//let generic = this.getNodeParameter('genericAuthType', itemIndex, '') as string;
+				//let credtype = this.getNodeParameter('headerAuth', itemIndex, '') as string;
+				var customHeaders = {}
+				let creds = await this.getCredentials('oDataCredentialsApi');
+				if (creds){
+					if (!creds.custom) { //just username and password
+						const base64Credentials = Buffer.from(`${creds.username}:${creds.password}`, 'utf8').toString('base64')
+						customHeaders = {
+							headers: {
+								'Authorization': `Basic ${base64Credentials}`
+							}
+						}
+					}
+					else { //use custom JSON string for headers
+						customHeaders = {
+							headers: JSON.parse(creds.custom as string)
+						}
+					}
+	
+				}
+
+				console.log('headers:', customHeaders)
+				//let authcode = '';
+				//if (generic == 'genericCredentialType' && credtype == 'httpBasicAuth')
+				//	authcode = 'x'
+
+				let ohandler =  o(url, customHeaders)
+
 				//If no raw query given, build it from other fields
 				if(!query || !Object.keys(query).length){
 					query = {}
@@ -222,22 +311,22 @@ export class ODataNode implements INodeType {
 				//console.log(method, resource, 'with query:', query, 'and data:', data)
 				switch(method){
 					case 'GET':
-						response = await o(url)
+						response = await ohandler
 							.get(resource)
 							.query(query);
 						break;
 					case 'POST':
-						response = await o(url)
+						response = await ohandler
 							.post(resource, data)
 							.query(query);
 						break
 					case 'PATCH':
-						response = await o(url)
+						response = await ohandler
 							.patch(resource, data)
 							.query(query);
 						break
 					case 'DELETE':
-						response = await o(url)
+						response = await ohandler
 							.delete(resource)
 							.query(query);
 						break
