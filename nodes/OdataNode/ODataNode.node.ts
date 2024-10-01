@@ -243,9 +243,6 @@ export class ODataNode implements INodeType {
 
 		let newitems: INodeExecutionData[] = [];
 
-		//let credentials = 'tealpegeen@starmail.net:+F1lBXKJdD1ZiLYp6wOfq0i1xIcFMRq6AYLNRWqMFdkb+Pgr'
-		//const base64Credentials = Buffer.from(credentials, 'utf8').toString('base64')
-
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				// OData service URL		
@@ -286,7 +283,7 @@ export class ODataNode implements INodeType {
 	
 				}
 
-				console.log('headers:', customHeaders)
+				//console.log('headers:', customHeaders)
 				//let authcode = '';
 				//if (generic == 'genericCredentialType' && credtype == 'httpBasicAuth')
 				//	authcode = 'x'
