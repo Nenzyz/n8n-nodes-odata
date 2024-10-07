@@ -5,6 +5,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 	IDataObject,
+	IHttpRequestOptions
 } from 'n8n-workflow';
 import { o } from 'odata';
 
@@ -24,21 +25,24 @@ export class ODataNode implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'oDataCredentialsApi',
+				name: 'oAuth2Api',
 				required: false,
 			},
+			{
+				name: 'oDataOAuth2Api',
+				required: false,
+			}
 		],
 		properties: [
 			{
 				displayName: 'URL',
 				name: 'url',
 				type: 'string',
-				default: 'https://services.odata.org/TripPinRESTierService/',
-				placeholder: 'https://services.odata.org/TripPinRESTierService',
+				default: 'https://graph.microsoft.com/v1.0/',
+				placeholder: 'https://graph.microsoft.com/v1.0/',
 				description: 'The OData service URL',
 			},
 
-			/*
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -83,9 +87,7 @@ export class ODataNode implements INodeType {
 						authentication: ['genericCredentialType'],
 					},
 				},
-			},*/
-
-
+			},
 
 			{
 				displayName: "Method",
@@ -240,16 +242,43 @@ export class ODataNode implements INodeType {
 		let skip: string;
 		let data: { [key: string]: any };
 		let response: IDataObject[] = [];
+		let authentication;
+
+
+
+		let options: IHttpRequestOptions = {url:'', method:'GET'};
 
 		let newitems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			//Authentication
+			try {
+				authentication = this.getNodeParameter('authentication', 0) as
+					//| 'predefinedCredentialType'
+					| 'genericCredentialType'
+					| 'none';
+			} catch {}
+
+			var oAuth2Api;
+			if (authentication === 'genericCredentialType') {
+				let genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
+	
+				if (genericCredentialType === 'oAuth2Api') {
+					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+				}
+			}
+
+
 			try {
 				// OData service URL		
 				method = this.getNodeParameter('method', itemIndex, '') as string;
 				url = this.getNodeParameter('url', itemIndex, '') as string;
+				if (url.slice(-1) !== '/') //Odata requires resource to end in /
+					url += '/';
+
 				resource = this.getNodeParameter('resource', itemIndex, '') as string;
 				resource = resource.replace('"',"'")
+
 				let query_str = this.getNodeParameter('query', itemIndex, '{}') as string;
 				query = JSON.parse(query_str || '{}')
 				select = this.getNodeParameter('select', itemIndex, '') as string;
@@ -259,34 +288,20 @@ export class ODataNode implements INodeType {
 				skip = this.getNodeParameter('skip', itemIndex, '') as string;
 				let data_str = this.getNodeParameter('data', itemIndex, '{}') as string;
 				data = JSON.parse(data_str || '{}')
+				options.url = url;
+				options.method = 'GET';
 
-				//this.getNodeParameter('header', itemIndex, '') as string;
-				//let auth = this.getNodeParameter('authentication', itemIndex, '') as string;
-				//let generic = this.getNodeParameter('genericAuthType', itemIndex, '') as string;
-				//let credtype = this.getNodeParameter('headerAuth', itemIndex, '') as string;
-				var customHeaders = {}
-				let creds = await this.getCredentials('oDataCredentialsApi');
-				if (creds){
-					if (!creds.custom) { //just username and password
-						const base64Credentials = Buffer.from(`${creds.username}:${creds.password}`, 'utf8').toString('base64')
-						customHeaders = {
-							headers: {
-								'Authorization': `Basic ${base64Credentials}`
-							}
-						}
-					}
-					else { //use custom JSON string for headers
-						customHeaders = {
-							headers: JSON.parse(creds.custom as string)
-						}
-					}
-	
+				var customHeaders = {} 
+
+				if (oAuth2Api?.oauthTokenData){
+					let tokendata;
+					if (typeof oAuth2Api?.oauthTokenData == 'string')
+						tokendata = JSON.parse(oAuth2Api?.oauthTokenData)
+					else
+						tokendata = oAuth2Api?.oauthTokenData
+
+					customHeaders = {headers:{'Authorization':`Bearer ${tokendata.access_token}`}}
 				}
-
-				//console.log('headers:', customHeaders)
-				//let authcode = '';
-				//if (generic == 'genericCredentialType' && credtype == 'httpBasicAuth')
-				//	authcode = 'x'
 
 				let ohandler =  o(url, customHeaders)
 
@@ -305,7 +320,7 @@ export class ODataNode implements INodeType {
 						query["$skip"] = skip
 				}
 
-				//console.log(method, resource, 'with query:', query, 'and data:', data)
+
 				switch(method){
 					case 'GET':
 						response = await ohandler
@@ -330,6 +345,10 @@ export class ODataNode implements INodeType {
 				}
 
 
+				if (!Array.isArray(response)) {
+					response = [response]
+				}
+
 				for (let obj of response) {
 					newitems.push({
 						json: obj,
@@ -337,16 +356,12 @@ export class ODataNode implements INodeType {
 					});
 				  }
 
-
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					items.push({ json: this.getInputData(itemIndex)[0].json, error, pairedItem: itemIndex });
 				} else {
 					// Adding `itemIndex` allows other workflows to handle this error
 					if (error.context) {
-						// If the error thrown already contains the context property,
-						// only append the itemIndex
 						error.context.itemIndex = itemIndex;
 						throw error;
 					}
@@ -354,7 +369,7 @@ export class ODataNode implements INodeType {
 						itemIndex,
 					});
 				}
-		}
+			}
 	}
 
 
