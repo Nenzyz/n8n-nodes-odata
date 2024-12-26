@@ -90,142 +90,142 @@ export class ODataNode implements INodeType {
 			},
 
 			{
-				displayName: "Method",
-				name: "method",
-				type: "options",
-				options: [
-					{
-						"name": "GET",
-						"value": "GET"
+					displayName: "Method",
+					name: "method",
+					type: "options",
+					options: [
+						{
+							"name": "GET",
+							"value": "GET"
+						},
+						{
+							"name": "POST",
+							"value": "POST"
+						},
+						{
+							"name": "PATCH",
+							"value": "PATCH"
+						},
+						{
+							"name": "DELETE",
+							"value": "DELETE"
+						}
+					],
+					default: "GET"
+				},
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'string',
+					default: "",
+					placeholder: "People('scottketchum')",
+					description: 'The OData resource to fetch',
+				},
+				{
+					displayName: 'Data',
+					name: 'data',
+					type: 'string',
+					default: '',
+					placeholder: '{ "UserName": "newuser", "FirstName": "New", "LastName": "User" }',
+					description: 'Data to POST as valid JSON string.',
+					displayOptions: {
+						show: {
+							method: ['POST', 'PATCH']
+						},
 					},
-					{
-						"name": "POST",
-						"value": "POST"
+				},
+				{
+					displayName: 'Advanced',
+					name: 'visibleOption',
+					type: 'boolean',
+					default: false,
+					description: 'Advanced Options',
+				},
+				{
+					displayName: 'Raw Query',
+					name: 'query',
+					type: 'string',
+					default: '',
+					placeholder: `{"$filter": "FirstName eq 'John'", "$select": "FirstName,LastName"}`,
+					description: 'The raw OData query, as valid JSON. Overrides other options.',
+					displayOptions: {
+						show: {
+							visibleOption: [true],  // Show this option only if visibleOption is true
+						},
 					},
-					{
-						"name": "PATCH",
-						"value": "PATCH"
+				},
+				{
+					displayName: '$select',
+					name: 'select',
+					type: 'string',
+					default: '',
+					placeholder: 'FirstName,LastName,UserName',
+					description: 'The fields to select, separated by commas',
+					displayOptions: {
+						show: {
+							query: [''], //raw query overrides these controls
+							visibleOption: [true]
+						},
 					},
-					{
-						"name": "DELETE",
-						"value": "DELETE"
-					}
-				],
-				default: "GET"
-			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'string',
-				default: "",
-				placeholder: "People('scottketchum')",
-				description: 'The OData resource to fetch',
-			},
-			{
-				displayName: 'Data',
-				name: 'data',
-				type: 'string',
-				default: '',
-				placeholder: '{ "UserName": "newuser", "FirstName": "New", "LastName": "User" }',
-				description: 'Data to POST as valid JSON string.',
-				displayOptions: {
-                    show: {
-					   method: ['POST', 'PATCH']
-                    },
-                },
-			},
-            {
-                displayName: 'Advanced',
-                name: 'visibleOption',
-                type: 'boolean',
-                default: false,
-                description: 'Advanced Options',
-            },
-			{
-				displayName: 'Raw Query',
-				name: 'query',
-				type: 'string',
-				default: '',
-				placeholder: `{"$filter": "FirstName eq 'John'", "$select": "FirstName,LastName"}`,
-				description: 'The raw OData query, as valid JSON. Overrides other options.',
-                displayOptions: {
-                    show: {
-                        visibleOption: [true],  // Show this option only if visibleOption is true
-                    },
-                },
-			},
-			{
-				displayName: '$select',
-				name: 'select',
-				type: 'string',
-				default: '',
-				placeholder: 'FirstName,LastName,UserName',
-				description: 'The fields to select, separated by commas',
-				displayOptions: {
-                    show: {
-                       query: [''], //raw query overrides these controls
-					   visibleOption: [true]
-                    },
-                },
-			},
-			{
-				displayName: '$filter',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				placeholder: "LastName eq 'Russell' or FirstName eq 'Scott'",
-				description: 'The filter expression',
-				displayOptions: {
-                    show: {
-                       query: [''],
-					   visibleOption: [true]
-                    },
-                },
-			},
-			{
-				displayName: '$orderby',
-				name: 'orderby',
-				type: 'string',
-				default: '',
-				placeholder: "LastName desc",
-				description: 'The field to order by',
-				displayOptions: {
-                    show: {
-                       query: [''],
-					   visibleOption: [true]
-                    },
-                },
-			},
-			{
-				displayName: '$top',
-				name: 'top',
-				type: 'number',
-				default: '0',
-				placeholder: '10',
-				description: 'How many results to return',
-				displayOptions: {
-                    show: {
-                       query: [''],
-					   visibleOption: [true]
-                    },
-                },
-			},
-			{
-				displayName: '$skip',
-				name: 'skip',
-				type: 'number',
-				default: '',
-				placeholder: '3',
-				description: 'How many results to skip',
-				displayOptions: {
-                    show: {
-                       query: [''],
-					   visibleOption: [true]
-                    },
-                },
-			},
-		],
-	};
+				},
+				{
+					displayName: '$filter',
+					name: 'filter',
+					type: 'string',
+					default: '',
+					placeholder: "LastName eq 'Russell' or FirstName eq 'Scott'",
+					description: 'The filter expression',
+					displayOptions: {
+						show: {
+							query: [''],
+							visibleOption: [true]
+						},
+					},
+				},
+				{
+					displayName: '$orderby',
+					name: 'orderby',
+					type: 'string',
+					default: '',
+					placeholder: "LastName desc",
+					description: 'The field to order by',
+					displayOptions: {
+						show: {
+							query: [''],
+							visibleOption: [true]
+						},
+					},
+				},
+				{
+					displayName: '$top',
+					name: 'top',
+					type: 'number',
+					default: '0',
+					placeholder: '10',
+					description: 'How many results to return',
+					displayOptions: {
+						show: {
+							query: [''],
+							visibleOption: [true]
+						},
+					},
+				},
+				{
+					displayName: '$skip',
+					name: 'skip',
+					type: 'number',
+					default: '',
+					placeholder: '3',
+					description: 'How many results to skip',
+					displayOptions: {
+						show: {
+							query: [''],
+							visibleOption: [true]
+						},
+					},
+				},
+			],
+		};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -260,11 +260,14 @@ export class ODataNode implements INodeType {
 			} catch {}
 
 			var oAuth2Api;
+			var basicAuth;
 			if (authentication === 'genericCredentialType') {
 				let genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
-	
+
 				if (genericCredentialType === 'oAuth2Api') {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+				} else if (genericCredentialType === 'basicAuth') {
+					basicAuth = await this.getCredentials('basicAuth', itemIndex);
 				}
 			}
 
@@ -301,6 +304,9 @@ export class ODataNode implements INodeType {
 						tokendata = oAuth2Api?.oauthTokenData
 
 					customHeaders = {headers:{'Authorization':`Bearer ${tokendata.access_token}`}}
+				} else if (basicAuth) {
+					const auth = new Buffer(`${basicAuth.user}:${basicAuth.password}`, 'binary').toString('base64');
+					customHeaders = {headers:{'Authorization':`Basic ${auth}`}}
 				}
 
 				let ohandler =  o(url, customHeaders)
