@@ -264,10 +264,14 @@ export class ODataNode implements INodeType {
 			if (authentication === 'genericCredentialType') {
 				let genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
+
+				console.log(genericCredentialType);
+
 				if (genericCredentialType === 'oAuth2Api') {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				} else if (genericCredentialType === 'basicAuth') {
 					basicAuth = await this.getCredentials('basicAuth', itemIndex);
+					console.log(basicAuth);
 				}
 			}
 
@@ -306,6 +310,7 @@ export class ODataNode implements INodeType {
 					customHeaders = {headers:{'Authorization':`Bearer ${tokendata.access_token}`}}
 				} else if (basicAuth) {
 					const auth = new Buffer(`${basicAuth.user}:${basicAuth.password}`, 'binary').toString('base64');
+					console.log(auth);
 					customHeaders = {headers:{'Authorization':`Basic ${auth}`}}
 				}
 
