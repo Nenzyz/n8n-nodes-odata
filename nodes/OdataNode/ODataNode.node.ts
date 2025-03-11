@@ -1,14 +1,35 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptionsSimplified,
+	jsonParse,
 	NodeOperationError,
 	IDataObject,
 	IHttpRequestOptions
 } from 'n8n-workflow';
 import { o } from 'odata';
+import type { Readable } from 'stream';
 
+export async function reduceAsync<T, R>(
+	arr: T[],
+	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
+	init: Promise<R> = Promise.resolve({} as R),
+): Promise<R> {
+	return await arr.reduce(async (promiseAcc, item) => {
+		return await reducer(await promiseAcc, item);
+	}, init);
+}
+
+export const keysToLowercase = <T>(headers: T) => {
+	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
+	return Object.entries(headers).reduce((acc, [key, value]) => {
+		acc[key.toLowerCase()] = value as IDataObject;
+		return acc;
+	}, {} as IDataObject);
+};
 
 export class ODataNode implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,6 +51,10 @@ export class ODataNode implements INodeType {
 			},
 			{
 				name: 'oDataOAuth2Api',
+				required: false,
+			},
+			{
+				name: 'httpCustomAuth',
 				required: false,
 			}
 		],
@@ -90,142 +115,226 @@ export class ODataNode implements INodeType {
 			},
 
 			{
-					displayName: "Method",
-					name: "method",
-					type: "options",
-					options: [
+				displayName: "Method",
+				name: "method",
+				type: "options",
+				options: [
+					{
+						"name": "GET",
+						"value": "GET"
+					},
+					{
+						"name": "POST",
+						"value": "POST"
+					},
+					{
+						"name": "PATCH",
+						"value": "PATCH"
+					},
+					{
+						"name": "DELETE",
+						"value": "DELETE"
+					}
+				],
+				default: "GET"
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'string',
+				default: "",
+				placeholder: "People('scottketchum')",
+				description: 'The OData resource to fetch',
+			},
+			{
+				displayName: 'Data',
+				name: 'data',
+				type: 'string',
+				default: '',
+				placeholder: '{ "UserName": "newuser", "FirstName": "New", "LastName": "User" }',
+				description: 'Data to POST as valid JSON string.',
+				displayOptions: {
+                    show: {
+					   method: ['POST', 'PATCH']
+                    },
+                },
+			},
+			{
+				displayName: 'Send Headers',
+				name: 'sendHeaders',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether the request has headers or not',
+			},
+			{
+				displayName: 'Specify Headers',
+				name: 'specifyHeaders',
+				type: 'options',
+				displayOptions: {
+					show: {
+						sendHeaders: [true],
+					},
+				},
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'keypair',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'keypair',
+			},
+			{
+				displayName: 'Header Parameters',
+				name: 'headerParameters',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						sendHeaders: [true],
+						specifyHeaders: ['keypair'],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {
+					parameters: [
 						{
-							"name": "GET",
-							"value": "GET"
+							name: '',
+							value: '',
 						},
-						{
-							"name": "POST",
-							"value": "POST"
-						},
-						{
-							"name": "PATCH",
-							"value": "PATCH"
-						},
-						{
-							"name": "DELETE",
-							"value": "DELETE"
-						}
 					],
-					default: "GET"
 				},
-				{
-					displayName: 'Resource',
-					name: 'resource',
-					type: 'string',
-					default: "",
-					placeholder: "People('scottketchum')",
-					description: 'The OData resource to fetch',
-				},
-				{
-					displayName: 'Data',
-					name: 'data',
-					type: 'string',
-					default: '',
-					placeholder: '{ "UserName": "newuser", "FirstName": "New", "LastName": "User" }',
-					description: 'Data to POST as valid JSON string.',
-					displayOptions: {
-						show: {
-							method: ['POST', 'PATCH']
-						},
+				options: [
+					{
+						name: 'parameters',
+						displayName: 'Parameter',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'JSON',
+				name: 'jsonHeaders',
+				type: 'json',
+				displayOptions: {
+					show: {
+						sendHeaders: [true],
+						specifyHeaders: ['json'],
 					},
 				},
-				{
-					displayName: 'Advanced',
-					name: 'visibleOption',
-					type: 'boolean',
-					default: false,
-					description: 'Advanced Options',
-				},
-				{
-					displayName: 'Raw Query',
-					name: 'query',
-					type: 'string',
-					default: '',
-					placeholder: `{"$filter": "FirstName eq 'John'", "$select": "FirstName,LastName"}`,
-					description: 'The raw OData query, as valid JSON. Overrides other options.',
-					displayOptions: {
-						show: {
-							visibleOption: [true],  // Show this option only if visibleOption is true
-						},
-					},
-				},
-				{
-					displayName: '$select',
-					name: 'select',
-					type: 'string',
-					default: '',
-					placeholder: 'FirstName,LastName,UserName',
-					description: 'The fields to select, separated by commas',
-					displayOptions: {
-						show: {
-							query: [''], //raw query overrides these controls
-							visibleOption: [true]
-						},
-					},
-				},
-				{
-					displayName: '$filter',
-					name: 'filter',
-					type: 'string',
-					default: '',
-					placeholder: "LastName eq 'Russell' or FirstName eq 'Scott'",
-					description: 'The filter expression',
-					displayOptions: {
-						show: {
-							query: [''],
-							visibleOption: [true]
-						},
-					},
-				},
-				{
-					displayName: '$orderby',
-					name: 'orderby',
-					type: 'string',
-					default: '',
-					placeholder: "LastName desc",
-					description: 'The field to order by',
-					displayOptions: {
-						show: {
-							query: [''],
-							visibleOption: [true]
-						},
-					},
-				},
-				{
-					displayName: '$top',
-					name: 'top',
-					type: 'number',
-					default: '0',
-					placeholder: '10',
-					description: 'How many results to return',
-					displayOptions: {
-						show: {
-							query: [''],
-							visibleOption: [true]
-						},
-					},
-				},
-				{
-					displayName: '$skip',
-					name: 'skip',
-					type: 'number',
-					default: '',
-					placeholder: '3',
-					description: 'How many results to skip',
-					displayOptions: {
-						show: {
-							query: [''],
-							visibleOption: [true]
-						},
-					},
-				},
-			],
-		};
+				default: '',
+			},
+            {
+                displayName: 'Advanced',
+                name: 'visibleOption',
+                type: 'boolean',
+                default: false,
+                description: 'Advanced Options',
+            },
+			{
+				displayName: 'Raw Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				placeholder: `{"$filter": "FirstName eq 'John'", "$select": "FirstName,LastName"}`,
+				description: 'The raw OData query, as valid JSON. Overrides other options.',
+                displayOptions: {
+                    show: {
+                        visibleOption: [true],  // Show this option only if visibleOption is true
+                    },
+                },
+			},
+			{
+				displayName: '$select',
+				name: 'select',
+				type: 'string',
+				default: '',
+				placeholder: 'FirstName,LastName,UserName',
+				description: 'The fields to select, separated by commas',
+				displayOptions: {
+                    show: {
+                       query: [''], //raw query overrides these controls
+					   visibleOption: [true]
+                    },
+                },
+			},
+			{
+				displayName: '$filter',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				placeholder: "LastName eq 'Russell' or FirstName eq 'Scott'",
+				description: 'The filter expression',
+				displayOptions: {
+                    show: {
+                       query: [''],
+					   visibleOption: [true]
+                    },
+                },
+			},
+			{
+				displayName: '$orderby',
+				name: 'orderby',
+				type: 'string',
+				default: '',
+				placeholder: "LastName desc",
+				description: 'The field to order by',
+				displayOptions: {
+                    show: {
+                       query: [''],
+					   visibleOption: [true]
+                    },
+                },
+			},
+			{
+				displayName: '$top',
+				name: 'top',
+				type: 'number',
+				default: '0',
+				placeholder: '10',
+				description: 'How many results to return',
+				displayOptions: {
+                    show: {
+                       query: [''],
+					   visibleOption: [true]
+                    },
+                },
+			},
+			{
+				displayName: '$skip',
+				name: 'skip',
+				type: 'number',
+				default: '',
+				placeholder: '3',
+				description: 'How many results to skip',
+				displayOptions: {
+                    show: {
+                       query: [''],
+					   visibleOption: [true]
+                    },
+                },
+			},
+		],
+	};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -261,20 +370,23 @@ export class ODataNode implements INodeType {
 
 			var oAuth2Api;
 			var basicAuth;
+			let httpCustomAuth;
 			if (authentication === 'genericCredentialType') {
 				let genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 
-				console.log(genericCredentialType);
+				console.log('genericCredentialType', genericCredentialType);
 
 				if (genericCredentialType === 'oAuth2Api') {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				} else if (genericCredentialType === 'basicAuth') {
 					basicAuth = await this.getCredentials('basicAuth', itemIndex);
-					console.log(basicAuth);
+					console.log('basicAuth', basicAuth);
+				} else if (genericCredentialType === 'httpCustomAuth') {
+					httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+					console.log('httpCustomAuth', httpCustomAuth);
 				}
 			}
-
 
 			try {
 				// OData service URL		
@@ -298,7 +410,7 @@ export class ODataNode implements INodeType {
 				options.url = url;
 				options.method = 'GET';
 
-				var customHeaders = {} 
+				var customHeaders = {headers: {}};
 
 				if (oAuth2Api?.oauthTokenData){
 					let tokendata;
@@ -312,6 +424,91 @@ export class ODataNode implements INodeType {
 					const auth = new Buffer(`${basicAuth.user}:${basicAuth.password}`, 'binary').toString('base64');
 					console.log(auth);
 					customHeaders = {headers:{'Authorization':`Basic ${auth}`}}
+				} else if (httpCustomAuth !== undefined){
+					const customAuth = jsonParse<IRequestOptionsSimplified>(
+						(httpCustomAuth.json as string) || '{}',
+						{ errorMessage: 'Invalid Custom Auth JSON' },
+					);
+					console.log('customAuth', customAuth);
+					if (customAuth.headers) {
+						customHeaders = { ...customHeaders, ...customAuth };
+					}
+					console.log('customHeaders', customHeaders);
+				}
+
+				const parametersToKeyValue = async (
+					accumulator: { [key: string]: any },
+					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+				) => {
+					if (cur.parameterType === 'formBinaryData') {
+						if (!cur.inputDataFieldName) return accumulator;
+						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
+						let uploadData: Buffer | Readable;
+						const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
+						if (itemBinaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
+						} else {
+							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+						}
+	
+						accumulator[cur.name] = {
+							value: uploadData,
+							options: {
+								filename: binaryData.fileName,
+								contentType: binaryData.mimeType,
+							},
+						};
+						return accumulator;
+					}
+					accumulator[cur.name] = cur.value;
+					return accumulator;
+				};
+
+				const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+
+				const headerParameters = this.getNodeParameter(
+					'headerParameters.parameters',
+					itemIndex,
+					[],
+				) as [{ name: string; value: string }];
+	
+				const specifyHeaders = this.getNodeParameter(
+					'specifyHeaders',
+					itemIndex,
+					'keypair',
+				) as string;
+	
+				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+
+				// Get parameters defined in the UI
+				if (sendHeaders && headerParameters) {
+					let additionalHeaders: IDataObject = {};
+					if (specifyHeaders === 'keypair') {
+						additionalHeaders = await reduceAsync(
+							headerParameters.filter((header) => header.name),
+							parametersToKeyValue,
+						);
+					} else if (specifyHeaders === 'json') {
+						// body is specified using JSON
+						try {
+							JSON.parse(jsonHeadersParameter);
+						} catch {
+							throw new NodeOperationError(
+								this.getNode(),
+								'JSON parameter need to be an valid JSON',
+								{
+									itemIndex,
+								},
+							);
+						}
+
+						additionalHeaders = jsonParse(jsonHeadersParameter);
+					}
+
+					customHeaders.headers = {
+						...(customHeaders.headers || {}),
+						...keysToLowercase(additionalHeaders),
+					};
 				}
 
 				let ohandler =  o(url, customHeaders)
