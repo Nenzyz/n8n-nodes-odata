@@ -292,6 +292,20 @@ export class ODataNode implements INodeType {
                 },
 			},
 			{
+				displayName: '$expand',
+				name: 'expand',
+				type: 'string',
+				default: '',
+				placeholder: 'Products',
+				description: 'The command to expand',
+				displayOptions: {
+                    show: {
+                       query: [''], //raw query overrides these controls
+					   visibleOption: [true]
+                    },
+                },
+			},
+			{
 				displayName: '$orderby',
 				name: 'orderby',
 				type: 'string',
@@ -349,6 +363,7 @@ export class ODataNode implements INodeType {
 		let orderby: string;
 		let top: string;
 		let skip: string;
+		let expand: string;
 		let data: { [key: string]: any };
 		let response: IDataObject[] = [];
 		let authentication;
@@ -405,6 +420,7 @@ export class ODataNode implements INodeType {
 				orderby = this.getNodeParameter('orderby', itemIndex, '') as string;
 				top = this.getNodeParameter('top', itemIndex, '') as string;
 				skip = this.getNodeParameter('skip', itemIndex, '') as string;
+				expand = this.getNodeParameter('expand', itemIndex, '') as string;
 				let data_str = this.getNodeParameter('data', itemIndex, '{}') as string;
 				data = JSON.parse(data_str || '{}')
 				options.url = url;
@@ -522,6 +538,8 @@ export class ODataNode implements INodeType {
 						query["$filter"] = filter
 					if(orderby)
 						query["$orderby"] = orderby
+					if(expand)
+						query["$expand"] =  expand.replace(/\ /g, '')
 					if(top)
 						query["$top"] = top
 					if(skip)
