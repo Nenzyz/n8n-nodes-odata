@@ -348,11 +348,10 @@ export class ODataNode implements INodeType {
                 },
 			},
 			{
-				displayName: '$skip',
-				name: 'skip',
+				displayName: '$count',
+				name: 'count',
 				type: 'boolean',
-				default: 'false',
-				placeholder: 'false',
+				default: false,
 				description: 'Return inline count',
 				displayOptions: {
                     show: {
