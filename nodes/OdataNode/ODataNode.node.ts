@@ -347,6 +347,20 @@ export class ODataNode implements INodeType {
                     },
                 },
 			},
+			{
+				displayName: '$skip',
+				name: 'skip',
+				type: 'boolean',
+				default: 'false',
+				placeholder: 'false',
+				description: 'Return inline count',
+				displayOptions: {
+                    show: {
+                       query: [''],
+					   visibleOption: [true]
+                    },
+                },
+			},
 		],
 	};
 
@@ -364,6 +378,7 @@ export class ODataNode implements INodeType {
 		let top: string;
 		let skip: string;
 		let expand: string;
+		let count: boolean;
 		let data: { [key: string]: any };
 		let response: IDataObject[] = [];
 		let authentication;
@@ -421,6 +436,7 @@ export class ODataNode implements INodeType {
 				top = this.getNodeParameter('top', itemIndex, '') as string;
 				skip = this.getNodeParameter('skip', itemIndex, '') as string;
 				expand = this.getNodeParameter('expand', itemIndex, '') as string;
+				count = this.getNodeParameter('count', itemIndex, '') as boolean;
 				let data_str = this.getNodeParameter('data', itemIndex, '{}') as string;
 				data = JSON.parse(data_str || '{}')
 				options.url = url;
@@ -544,11 +560,18 @@ export class ODataNode implements INodeType {
 						query["$top"] = top
 					if(skip)
 						query["$skip"] = skip
+					if(count != undefined)
+						query["$count"] = count
 				}
 
 
 				switch(method){
 					case 'GET':
+						if (count !== undefined) {
+							var fetchResponse = await fetchData(url, query, customHeaders.headers);
+							response = fetchResponse;
+							break;
+						}
 						response = await ohandler
 							.get(resource)
 							.query(query);
@@ -603,4 +626,29 @@ export class ODataNode implements INodeType {
 		return this.prepareOutputData(newitems);
 
 	}
+}
+
+const fetchData = async function(url: string, query: { [key: string]: any }, headers: any): Promise<IDataObject[]> {
+    const fullUrl = `${url}?${new URLSearchParams(query).toString()}`;
+
+    const response = await fetch(fullUrl, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            ...headers,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+        return [data] as IDataObject[]; // Ensure it's always an array
+    }
+
+    return data as IDataObject[];
 }
