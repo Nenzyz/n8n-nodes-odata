@@ -566,8 +566,11 @@ export class ODataNode implements INodeType {
 
 				switch(method){
 					case 'GET':
-						if (count !== undefined) {
-							var fetchResponse = await fetchData(url, query, customHeaders.headers);
+						if (count) {
+							const buildUrl = url.endsWith('/')
+								? `${url}${resource}`
+								: `${url}/${resource}`;
+							const fetchResponse = await fetchData(buildUrl, query, customHeaders.headers);
 							response = fetchResponse;
 							break;
 						}
@@ -613,8 +616,38 @@ export class ODataNode implements INodeType {
 						error.context.itemIndex = itemIndex;
 						throw error;
 					}
-					throw new NodeOperationError(this.getNode(), error, {
+
+					// Extract meaningful error information
+					let errorMessage = 'An error occurred while executing the OData request';
+
+					if (error instanceof Error) {
+						errorMessage = error.message;
+					} else if (typeof error === 'string') {
+						errorMessage = error;
+					} else if (error?.message) {
+						errorMessage = error.message;
+					}
+
+					// Add additional context if available
+					if (error?.response) {
+						const status = error.response.status || error.response.statusCode;
+						const statusText = error.response.statusText || error.response.statusMessage;
+						if (status) {
+							errorMessage = `HTTP ${status}${statusText ? ` ${statusText}` : ''}: ${errorMessage}`;
+						}
+						if (error.response.data) {
+							try {
+								const responseData = typeof error.response.data === 'string'
+									? error.response.data
+									: JSON.stringify(error.response.data, null, 2);
+								errorMessage += `\n\nResponse: ${responseData}`;
+							} catch {}
+						}
+					}
+
+					throw new NodeOperationError(this.getNode(), errorMessage, {
 						itemIndex,
+						description: error?.stack || undefined,
 					});
 				}
 			}
@@ -629,7 +662,7 @@ export class ODataNode implements INodeType {
 
 const fetchData = async function(url: string, query: { [key: string]: any }, headers: any): Promise<IDataObject[]> {
     const fullUrl = `${url}?${new URLSearchParams(query).toString()}`;
-
+	console.log('fullUrl', fullUrl);
     const response = await fetch(fullUrl, {
         method: "GET",
         headers: {
