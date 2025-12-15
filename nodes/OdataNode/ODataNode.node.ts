@@ -418,7 +418,7 @@ export class ODataNode implements INodeType {
 			}
 
 			try {
-				// OData service URL		
+				// OData service URL
 				method = this.getNodeParameter('method', itemIndex, '') as string;
 				url = this.getNodeParameter('url', itemIndex, '') as string;
 				if (url.slice(-1) !== '/') //Odata requires resource to end in /
@@ -481,7 +481,7 @@ export class ODataNode implements INodeType {
 						} else {
 							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 						}
-	
+
 						accumulator[cur.name] = {
 							value: uploadData,
 							options: {
@@ -502,13 +502,13 @@ export class ODataNode implements INodeType {
 					itemIndex,
 					[],
 				) as [{ name: string; value: string }];
-	
+
 				const specifyHeaders = this.getNodeParameter(
 					'specifyHeaders',
 					itemIndex,
 					'keypair',
 				) as string;
-	
+
 				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 				// Get parameters defined in the UI
@@ -567,11 +567,12 @@ export class ODataNode implements INodeType {
 				switch(method){
 					case 'GET':
 						if (count || query["$count"]) {
-							const buildUrl = url.endsWith('/')
-								? `${url}${resource}`
-								: `${url}/${resource}`;
-							const fetchResponse = await fetchData(buildUrl, query, customHeaders.headers);
-							response = fetchResponse;
+							// Use .fetch() instead of .query() to preserve @odata.count metadata
+							const fetchResponse = await ohandler
+								.get(resource)
+								.fetch(query) as Response;
+							const data = await fetchResponse.json() as IDataObject;
+							response = [data];
 							break;
 						}
 						response = await ohandler
@@ -653,37 +654,6 @@ export class ODataNode implements INodeType {
 			}
 	}
 
-
-
 		return this.prepareOutputData(newitems);
-
 	}
-}
-
-const fetchData = async function(url: string, query: { [key: string]: any }, headers: any): Promise<IDataObject[]> {
-    const queryString = Object.entries(query)
-        .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
-        .join('&');
-    const fullUrl = `${url}?${queryString}`;
-	console.log('fullUrl', fullUrl);
-    const response = await fetch(fullUrl, {
-        method: "GET",
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            ...headers,
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (!Array.isArray(data)) {
-        return [data] as IDataObject[]; // Ensure it's always an array
-    }
-
-    return data as IDataObject[];
 }
