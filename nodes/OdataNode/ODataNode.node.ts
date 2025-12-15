@@ -323,7 +323,7 @@ export class ODataNode implements INodeType {
 				displayName: '$top',
 				name: 'top',
 				type: 'number',
-				default: '0',
+				default: '',
 				placeholder: '10',
 				description: 'How many results to return',
 				displayOptions: {
@@ -559,14 +559,14 @@ export class ODataNode implements INodeType {
 						query["$top"] = top
 					if(skip)
 						query["$skip"] = skip
-					if(count != undefined)
+					if(count)
 						query["$count"] = count
 				}
 
 
 				switch(method){
 					case 'GET':
-						if (count) {
+						if (count || query["$count"]) {
 							const buildUrl = url.endsWith('/')
 								? `${url}${resource}`
 								: `${url}/${resource}`;
