@@ -609,7 +609,7 @@ export class ODataNode implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					items.push({ json: items[itemIndex].json, error, pairedItem: itemIndex });
+					newitems.push({ json: items[itemIndex].json, error, pairedItem: itemIndex });
 				} else {
 					// Adding `itemIndex` allows other workflows to handle this error
 					if (error.context) {
