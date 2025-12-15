@@ -661,7 +661,10 @@ export class ODataNode implements INodeType {
 }
 
 const fetchData = async function(url: string, query: { [key: string]: any }, headers: any): Promise<IDataObject[]> {
-    const fullUrl = `${url}?${new URLSearchParams(query).toString()}`;
+    const queryString = Object.entries(query)
+        .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+        .join('&');
+    const fullUrl = `${url}?${queryString}`;
 	console.log('fullUrl', fullUrl);
     const response = await fetch(fullUrl, {
         method: "GET",
