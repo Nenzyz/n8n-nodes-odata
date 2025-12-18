@@ -542,6 +542,14 @@ export class ODataNode implements INodeType {
 					};
 				}
 
+				// Add Content-Type for methods that send a body
+				if (method === 'POST' || method === 'PATCH') {
+					customHeaders.headers = {
+						'content-type': 'application/json',
+						...customHeaders.headers,
+					};
+				}
+
 				let ohandler =  o(url, customHeaders)
 
 				//If no raw query given, build it from other fields
