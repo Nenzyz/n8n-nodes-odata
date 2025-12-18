@@ -585,14 +585,28 @@ export class ODataNode implements INodeType {
 							.query(query);
 						break
 					case 'PATCH':
-						response = await ohandler
+						const patchResponse = await ohandler
 							.patch(resource, data)
-							.query(query);
+							.fetch(query) as Response;
+						// 204 No Content is a valid success response for PATCH
+						if (patchResponse.status === 204) {
+							response = [{ success: true, status: 204 }];
+						} else {
+							const patchData = await patchResponse.json() as IDataObject;
+							response = [patchData];
+						}
 						break
 					case 'DELETE':
-						response = await ohandler
+						const deleteResponse = await ohandler
 							.delete(resource)
-							.query(query);
+							.fetch(query) as Response;
+						// 204 No Content is a valid success response for DELETE
+						if (deleteResponse.status === 204) {
+							response = [{ success: true, status: 204 }];
+						} else {
+							const deleteData = await deleteResponse.json() as IDataObject;
+							response = [deleteData];
+						}
 						break
 				}
 
